@@ -33,65 +33,66 @@
   <form id="settings">
     <label>
       Your browser window width in cm:
-      <input type="number" id="screenWidth" value="94" required onblur="scale()"/>
+      <input type="number" id="screenWidth" value="94" required onblur="tellDistance()"/>
     </label>
+    <button onclick="return tellDistance()">Update standing distance</button>
+    <p id="distance-output"></p>
     <br/><br/>
     <button onclick="return start()">Start</button>
     <button onclick="return stop()">Stop</button>
   </form>
 
-  <p id="distance-output"></p>
 
   <div id="moose-container">
     <img id="moose" src="https://metsastajaliitto.fi/sites/default/files/inline-images/SML-Mets%C3%A4styshirviammunta%20taulu.png" alt="Moose" onerror="this.onerror=null; this.src='moose_targets.png';" />
   </div>
 
   <script>
-        const form = document.getElementById('settings');
-        const moose = document.getElementById('moose');
-        const container = document.getElementById('moose-container');
-        const output = document.getElementById('distance-output');
+        const form = document.getElementById('settings')
+        const moose = document.getElementById('moose')
+        const container = document.getElementById('moose-container')
+        const output = document.getElementById('distance-output')
 
-        const waitDuration = 5000; // milliseconds
-        const realMooseSpeed = 5.22; // meters per second
-        const realTrackWidth = 23; // meters
+        const waitDuration = 5000 // milliseconds
+        const realMooseSpeed = 5.22 // meters per second
+        const realTrackWidth = 23 // meters
         const realDistance = 100 // meters
         const realTargetSizeCm = 65 // The outer ring in real cm
         const imageTargetSizePx = 142 // The outer ring in pixels
-        const screenWidthPx = container.clientWidth;
         const imageWidthInPixels = 1000
 
 
-        var scaleFactor = null
-        var pixelPerCm = null
-        var imageScaleFactor = null
         var virtualMooseWidthPx = null
         var speed = null
         var started = false
+        screenWidthPx = null
 
-        let position = screenWidthPx / 2
-        let direction = null
-        let lastTime = null;
-        let waiting = null;
-        let waitStart = null;
+        let position = null
+        let direction = 1
+        let lastTime = null
+        let waiting = null
+        let waitStart = null
 
-        const scale = () => {
-          const screenWidthCm = parseFloat(document.getElementById('screenWidth').value);
+         const tellDistance = () => {
+          const screenWidthCm = parseFloat(document.getElementById('screenWidth').value)
+          const scaleFactor = (screenWidthCm / 100) / realTrackWidth
 
-          scaleFactor = (screenWidthCm / 100) / realTrackWidth
-          const pixelPerCm = screenWidthPx / screenWidthCm;
-          imageScaleFactor = (realTargetSizeCm * pixelPerCm) / imageTargetSizePx
+          output.textContent = `Stand ${(100 * scaleFactor).toFixed(2)} meters from the screen for a 100 m simulation, or  ${(75 * scaleFactor).toFixed(2)} for a 75 m simulation.`
 
-          // Calculate the proper standing distance
-          const distanceM = realDistance * scaleFactor
-          output.textContent = `Stand ${(100 * scaleFactor).toFixed(2)} meters from the screen for a 100 m simulation, or  ${(75 * scaleFactor).toFixed(2)} for a 75 m simulation.`;
+          return false
+         }
 
-          virtualMooseWidthPx = imageWidthInPixels * imageScaleFactor * scaleFactor
-          moose.style.width = `${virtualMooseWidthPx}px`;
+        const scale = () => {          
+          screenWidthPx = container.clientWidth
+          
+          virtualMooseWidthPx = (imageWidthInPixels * realTargetSizeCm * screenWidthPx) / (imageTargetSizePx * realTrackWidth * 100)
+          moose.style.width = `${virtualMooseWidthPx}px`
 
           // Speed of moose in px/s
-          speed = realMooseSpeed * 100 * pixelPerCm * scaleFactor
-          position = screenWidthPx / 2 - virtualMooseWidthPx / 2
+          speed = screenWidthPx * realMooseSpeed / realTrackWidth
+          if (position === null) {
+            position = screenWidthPx / 2 - virtualMooseWidthPx / 2
+          }
           moose.style.left = `${position}px`
  
         }
@@ -100,9 +101,8 @@
           scale()
           started = true
           
-          direction = 1;
-          lastTime = null;
-          requestAnimationFrame(animate);
+          lastTime = null
+          requestAnimationFrame(animate)
           
           return false
         }
@@ -118,41 +118,43 @@
             return
           }
             if (!lastTime) {
-                lastTime = timestamp;
-                requestAnimationFrame(animate);
-                return;
+                lastTime = timestamp
+                requestAnimationFrame(animate)
+                return
             }
 
-            const delta = timestamp - lastTime;
-            lastTime = timestamp;
+            const delta = timestamp - lastTime
+            lastTime = timestamp
 
             if (waiting) {
                 if (timestamp - waitStart >= waitDuration) {
-                    waiting = false;
-                    direction *= -1;
+                    waiting = false
+                    direction *= -1
                 } else {
-                    requestAnimationFrame(animate);
-                    return;
+                    requestAnimationFrame(animate)
+                    return
                 }
             }
 
-            position += direction * speed * (delta / 1000);
+            position += direction * speed * (delta / 1000)
 
-            const leftEdge =  -virtualMooseWidthPx + 50;
-            const rightEdge = screenWidthPx + virtualMooseWidthPx - 50;
+            const leftEdge =  -virtualMooseWidthPx + 50
+            const rightEdge = screenWidthPx + virtualMooseWidthPx - 50
 
             if ((direction === 1 && position + virtualMooseWidthPx >= rightEdge) ||
                 (direction === -1 && position <= leftEdge)) {
-                position = direction === 1 ? rightEdge - virtualMooseWidthPx : leftEdge;
-                waiting = true;
-                waitStart = timestamp;
+                position = direction === 1 ? rightEdge - virtualMooseWidthPx : leftEdge
+                waiting = true
+                waitStart = timestamp
             }
 
-            moose.style.left = `${position}px`;
-            requestAnimationFrame(animate);
+            moose.style.left = `${position}px`
+            requestAnimationFrame(animate)
         }
 
-        scale()       
+        window.onresize = scale
+        scale()
+        tellDistance()
 
             
   </script>
